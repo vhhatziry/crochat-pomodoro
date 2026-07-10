@@ -1,0 +1,225 @@
+/**
+ * Side-by-side pattern panel. Sits to the right of the pomodoro when open and
+ * offers two tabs:
+ *   - "PDF"    : open a crochet-pattern PDF and read it next to the timer.
+ *   - "Patrón" : write your own notes (title + text + row counter), persisted.
+ */
+import { createPatronesView } from "./patronesView";
+import { loadPdfs, savePdfs } from "../store/persistence";
+import { convertFileSrc } from "@tauri-apps/api/core";
+
+export interface PatternsPanel {
+  el: HTMLElement;
+  refresh: () => void;
+}
+
+export function createPatternsPanel(): PatternsPanel {
+  const panel = document.createElement("section");
+  panel.className = "panel";
+
+  const tabs = document.createElement("div");
+  tabs.className = "panel__tabs";
+  const tabPdf = tabBtn("PDF");
+  const tabNota = tabBtn("Patrón");
+  tabs.append(tabPdf, tabNota);
+
+  const pdfView = createPdfView();
+  const patrones = createPatronesView();
+  pdfView.el.classList.add("panel__pane");
+  patrones.el.classList.add("panel__pane");
+
+  const body = document.createElement("div");
+  body.className = "panel__body";
+  body.append(pdfView.el, patrones.el);
+
+  panel.append(tabs, body);
+
+  let active: "pdf" | "nota" = "pdf";
+  const show = (which: "pdf" | "nota") => {
+    active = which;
+    pdfView.el.hidden = which !== "pdf";
+    patrones.el.hidden = which !== "nota";
+    tabPdf.classList.toggle("is-active", which === "pdf");
+    tabNota.classList.toggle("is-active", which === "nota");
+    if (which === "nota") patrones.refresh();
+    else pdfView.refresh();
+  };
+  tabPdf.addEventListener("click", () => show("pdf"));
+  tabNota.addEventListener("click", () => show("nota"));
+  show("pdf");
+
+  const refresh = () => (active === "nota" ? patrones.refresh() : pdfView.refresh());
+
+  return { el: panel, refresh };
+}
+
+function tabBtn(label: string): HTMLButtonElement {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "panel__tab";
+  b.textContent = label;
+  return b;
+}
+
+interface PdfView {
+  el: HTMLElement;
+  refresh: () => void;
+}
+
+/** Pretty filename from an absolute path. */
+function baseName(path: string): string {
+  const parts = path.split(/[\\/]/);
+  return parts[parts.length - 1] || path;
+}
+
+/**
+ * PDF library: a scrollable list of the user's pattern PDFs. Click one to read
+ * it in an embedded viewer next to the pomodoro. Add via the native picker
+ * (multi-select), remove per item. The list is persisted.
+ */
+function createPdfView(): PdfView {
+  const el = document.createElement("div");
+  el.className = "pdfview";
+
+  // --- toolbar --------------------------------------------------------------
+  const bar = document.createElement("div");
+  bar.className = "pdfview__bar";
+  const backBtn = document.createElement("button");
+  backBtn.type = "button";
+  backBtn.className = "pdfview__back";
+  backBtn.textContent = "‹ Lista";
+  backBtn.title = "Volver a la lista";
+  backBtn.hidden = true;
+  const title = document.createElement("span");
+  title.className = "pdfview__name";
+  const addBtn = document.createElement("button");
+  addBtn.type = "button";
+  addBtn.className = "pdfview__open";
+  addBtn.textContent = "＋ Añadir PDFs";
+  bar.append(backBtn, title, addBtn);
+
+  // --- list -----------------------------------------------------------------
+  const list = document.createElement("div");
+  list.className = "pdfview__list";
+  const empty = document.createElement("p");
+  empty.className = "pdfview__empty";
+  empty.textContent =
+    "Aún no hay PDFs. Toca «Añadir PDFs» para elegir tus patrones. 🧶";
+
+  // --- viewer ---------------------------------------------------------------
+  const frameWrap = document.createElement("div");
+  frameWrap.className = "pdfview__frame";
+  frameWrap.hidden = true;
+
+  el.append(bar, list, empty, frameWrap);
+
+  let pdfs: string[] = [];
+  let iframe: HTMLIFrameElement | null = null;
+
+  const persist = () => savePdfs(pdfs).catch(() => {});
+
+  const renderList = () => {
+    list.innerHTML = "";
+    // Only toggle list/empty visibility while the list (not the viewer) is up.
+    if (frameWrap.hidden) {
+      list.hidden = pdfs.length === 0;
+      empty.hidden = pdfs.length > 0;
+    }
+    pdfs.forEach((path) => {
+      const row = document.createElement("div");
+      row.className = "pdfrow";
+      const open = document.createElement("button");
+      open.type = "button";
+      open.className = "pdfrow__open";
+      open.innerHTML = `<span class="pdfrow__icon">📄</span><span class="pdfrow__label"></span>`;
+      open.querySelector(".pdfrow__label")!.textContent = baseName(path);
+      open.title = path;
+      open.addEventListener("click", () => view(path));
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "pdfrow__del";
+      del.textContent = "✕";
+      del.title = "Quitar de la lista";
+      del.setAttribute("aria-label", "Quitar PDF");
+      del.addEventListener("click", () => {
+        pdfs = pdfs.filter((p) => p !== path);
+        renderList();
+        persist();
+      });
+      row.append(open, del);
+      list.appendChild(row);
+    });
+  };
+
+  const showList = () => {
+    if (iframe) {
+      iframe.remove();
+      iframe = null;
+    }
+    frameWrap.hidden = true;
+    list.hidden = pdfs.length === 0;
+    empty.hidden = pdfs.length > 0;
+    backBtn.hidden = true;
+    title.textContent = "";
+    addBtn.hidden = false;
+  };
+
+  const view = (path: string) => {
+    if (iframe) iframe.remove();
+    iframe = document.createElement("iframe");
+    iframe.className = "pdfview__iframe";
+    iframe.title = "Patrón PDF";
+    try {
+      iframe.src = convertFileSrc(path);
+    } catch {
+      iframe.src = path;
+    }
+    frameWrap.innerHTML = "";
+    frameWrap.appendChild(iframe);
+    frameWrap.hidden = false;
+    list.hidden = true;
+    empty.hidden = true;
+    backBtn.hidden = false;
+    addBtn.hidden = true;
+    title.textContent = baseName(path);
+  };
+
+  backBtn.addEventListener("click", showList);
+
+  addBtn.addEventListener("click", async () => {
+    try {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const selected = await open({
+        multiple: true,
+        directory: false,
+        filters: [{ name: "PDF", extensions: ["pdf"] }],
+      });
+      const picked = Array.isArray(selected)
+        ? selected
+        : typeof selected === "string"
+          ? [selected]
+          : [];
+      if (!picked.length) return;
+      for (const p of picked) if (!pdfs.includes(p)) pdfs.push(p);
+      renderList();
+      persist();
+    } catch (err) {
+      console.error("[CrocHat] no se pudieron añadir PDFs:", err);
+    }
+  });
+
+  let loaded = false;
+  const refresh = async () => {
+    if (loaded) return;
+    loaded = true;
+    try {
+      pdfs = await loadPdfs();
+    } catch {
+      pdfs = [];
+    }
+    renderList();
+    showList();
+  };
+
+  return { el, refresh };
+}

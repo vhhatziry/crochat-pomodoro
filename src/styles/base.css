@@ -1,0 +1,65 @@
+/* Local pixel font — bundled so the widget works fully offline. */
+@font-face {
+  font-family: "Press Start 2P";
+  src: url("../assets/fonts/PressStart2P-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  /* Transparent so the widget's rounded corners show through. */
+  background: transparent;
+  overflow: hidden;
+}
+
+body {
+  font-family: "Press Start 2P", "Courier New", monospace;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-font-smoothing: none;
+  color: var(--text);
+}
+
+#app {
+  height: 100%;
+}
+
+/* Keep all pixel-art crisp when scaled. */
+img,
+.heart,
+.decor,
+.nav-btn {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+/* Inputs (patrones view) may be selected/edited. */
+input,
+textarea {
+  font-family: inherit;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+[hidden] {
+  display: none !important;
+}

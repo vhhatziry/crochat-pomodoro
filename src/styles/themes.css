@@ -1,0 +1,51 @@
+/*
+ * Two themes driven by `data-theme` on <html>. Colors sampled directly from the
+ * reference art: green = "Modo claro", purple = "Modo oscuro".
+ * Everything visual reads from these variables so switching one attribute
+ * repaints the whole widget.
+ */
+
+:root,
+:root[data-theme="green"] {
+  --bg: #cdeb8f;
+  --bg-soft: #dcf3ad;
+  --bg-grad-top: #d6f3a0;
+  --bg-grad-bottom: #bfe57f;
+  --border: #4f8a2a;
+  --border-light: #8dd665;
+  --titlebar: #8dd665;
+  --titlebar-text: #2f5a1f;
+  --text: #3d6f15;
+  --subtitle: #ffffff;
+  --subtitle-outline: #3d6f15;
+  --accent: #d64541; /* tomato pip */
+  --accent-2: #4a86c8; /* patrones blue */
+  --decor: url("../assets/sprites/clover.png");
+  --bg-image: url("../assets/bg/trebols.svg");
+  --display: #3d6f15;
+  --display-outline: #eaffc9;
+  --pom-btn: #e89bb5;
+  --pom-btn-border: #c76082;
+}
+
+:root[data-theme="purple"] {
+  --bg: #9071a9;
+  --bg-soft: #a488ba;
+  --bg-grad-top: #9c7cb4;
+  --bg-grad-bottom: #85669e;
+  --border: #6f4d80;
+  --border-light: #8a609d;
+  --titlebar: #8a609d;
+  --titlebar-text: #33224a;
+  --text: #ede0f6;
+  --subtitle: #ffffff;
+  --subtitle-outline: #4a2d57;
+  --accent: #d64541;
+  --accent-2: #7a5aa8;
+  --decor: url("../assets/sprites/flower.png");
+  --bg-image: url("../assets/bg/tulips.svg");
+  --display: #ede0f6;
+  --display-outline: #5a3f6b;
+  --pom-btn: #e89bb5;
+  --pom-btn-border: #c76082;
+}
