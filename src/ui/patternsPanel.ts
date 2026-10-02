@@ -5,15 +5,18 @@
  *   - "Patrón" : write your own notes (title + text + row counter), persisted.
  */
 import { createPatronesView } from "./patronesView";
-import { loadPdfs, savePdfs } from "../store/persistence";
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { loadPdfs, savePdfs, flushLibraryWrites } from "../store/persistence";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import { createPdfReader } from "../pdf/reader";
+import { uniqueLibraryPaths } from "../store/writeQueue";
 
 export interface PatternsPanel {
   el: HTMLElement;
   refresh: () => void;
 }
 
-export function createPatternsPanel(): PatternsPanel {
+export function createPatternsPanel(options: { standalone?: boolean } = {}): PatternsPanel {
   const panel = document.createElement("section");
   panel.className = "panel";
 
@@ -22,6 +25,9 @@ export function createPatternsPanel(): PatternsPanel {
   const tabPdf = tabBtn("PDF");
   const tabNota = tabBtn("Patrón");
   tabs.append(tabPdf, tabNota);
+  const detach = tabBtn("↗ Ventana");
+  detach.title = "Abrir patrones en una ventana redimensionable";
+  if (!options.standalone) tabs.append(detach);
 
   const pdfView = createPdfView();
   const patrones = createPatronesView();
@@ -33,6 +39,43 @@ export function createPatternsPanel(): PatternsPanel {
   body.append(pdfView.el, patrones.el);
 
   panel.append(tabs, body);
+  const detached = document.createElement("p");
+  detached.className = "panel__detached";
+  detached.textContent = "Tus patrones están en otra ventana. Puedes moverla, maximizarla y cambiar su tamaño. Al cerrarla, vuelven aquí.";
+  detached.hidden = true;
+  panel.append(detached);
+  let separated = false;
+  const lockPanel = (locked: boolean) => {
+    separated = locked;
+    body.hidden = locked;
+    body.inert = locked;
+    detached.hidden = !locked;
+    tabPdf.disabled = tabNota.disabled = locked;
+    detach.textContent = locked ? "↗ Ver ventana" : "↗ Ventana";
+  };
+  if (!options.standalone) {
+    const closedListener = listen("patterns-closed", async () => {
+      detach.disabled = true;
+      await Promise.all([patrones.refresh(true), pdfView.refresh(true)]);
+      lockPanel(false);
+      detach.disabled = false;
+    });
+    void closedListener.then(async () => {
+      if (await invoke<boolean>("patterns_window_open")) lockPanel(true);
+    }).catch(() => {});
+    detach.addEventListener("click", async () => {
+      detach.disabled = true;
+      lockPanel(true);
+      try {
+        await closedListener;
+        await flushLibraryWrites();
+        await invoke("open_patterns_window", { tab: active, pdf: active === "pdf" ? pdfView.currentPath() : null });
+      } catch (error) {
+        lockPanel(false);
+        window.alert(`No se pudo abrir la ventana de patrones: ${String(error)}`);
+      } finally { detach.disabled = false; }
+    });
+  }
 
   let active: "pdf" | "nota" = "pdf";
   const show = (which: "pdf" | "nota") => {
@@ -46,9 +89,12 @@ export function createPatternsPanel(): PatternsPanel {
   };
   tabPdf.addEventListener("click", () => show("pdf"));
   tabNota.addEventListener("click", () => show("nota"));
-  show("pdf");
+  show(options.standalone && new URLSearchParams(location.search).get("tab") === "nota" ? "nota" : "pdf");
 
-  const refresh = () => (active === "nota" ? patrones.refresh() : pdfView.refresh());
+  const refresh = () => {
+    if (separated) return;
+    return active === "nota" ? patrones.refresh() : pdfView.refresh();
+  };
 
   return { el: panel, refresh };
 }
@@ -63,7 +109,8 @@ function tabBtn(label: string): HTMLButtonElement {
 
 interface PdfView {
   el: HTMLElement;
-  refresh: () => void;
+  refresh: (reload?: boolean) => Promise<void>;
+  currentPath: () => string | null;
 }
 
 /** Pretty filename from an absolute path. */
@@ -96,6 +143,7 @@ function createPdfView(): PdfView {
   addBtn.type = "button";
   addBtn.className = "pdfview__open";
   addBtn.textContent = "＋ Añadir PDFs";
+  addBtn.disabled = true;
   bar.append(backBtn, title, addBtn);
 
   // --- list -----------------------------------------------------------------
@@ -114,9 +162,13 @@ function createPdfView(): PdfView {
   el.append(bar, list, empty, frameWrap);
 
   let pdfs: string[] = [];
-  let iframe: HTMLIFrameElement | null = null;
+  let openedPath: string | null = null;
+  const reader = createPdfReader();
+  frameWrap.append(reader.el);
 
-  const persist = () => savePdfs(pdfs).catch(() => {});
+  const persist = () => savePdfs(pdfs).catch(() => {
+    window.alert("No se guardaron los cambios de la biblioteca PDF. Intenta de nuevo antes de cerrar.");
+  });
 
   const renderList = () => {
     list.innerHTML = "";
@@ -152,10 +204,8 @@ function createPdfView(): PdfView {
   };
 
   const showList = () => {
-    if (iframe) {
-      iframe.remove();
-      iframe = null;
-    }
+    openedPath = null;
+    reader.clear();
     frameWrap.hidden = true;
     list.hidden = pdfs.length === 0;
     empty.hidden = pdfs.length > 0;
@@ -165,23 +215,14 @@ function createPdfView(): PdfView {
   };
 
   const view = (path: string) => {
-    if (iframe) iframe.remove();
-    iframe = document.createElement("iframe");
-    iframe.className = "pdfview__iframe";
-    iframe.title = "Patrón PDF";
-    try {
-      iframe.src = convertFileSrc(path);
-    } catch {
-      iframe.src = path;
-    }
-    frameWrap.innerHTML = "";
-    frameWrap.appendChild(iframe);
+    openedPath = path;
     frameWrap.hidden = false;
     list.hidden = true;
     empty.hidden = true;
     backBtn.hidden = false;
     addBtn.hidden = true;
     title.textContent = baseName(path);
+    void reader.open(path);
   };
 
   backBtn.addEventListener("click", showList);
@@ -200,7 +241,7 @@ function createPdfView(): PdfView {
           ? [selected]
           : [];
       if (!picked.length) return;
-      for (const p of picked) if (!pdfs.includes(p)) pdfs.push(p);
+      pdfs = uniqueLibraryPaths([...pdfs, ...picked]);
       renderList();
       persist();
     } catch (err) {
@@ -209,17 +250,30 @@ function createPdfView(): PdfView {
   });
 
   let loaded = false;
-  const refresh = async () => {
+  let refreshing: Promise<void> | undefined;
+  const refresh = async (reload = false) => {
+    if (reload) { loaded = false; addBtn.disabled = true; list.inert = true; }
     if (loaded) return;
-    loaded = true;
-    try {
-      pdfs = await loadPdfs();
-    } catch {
-      pdfs = [];
-    }
-    renderList();
-    showList();
+    if (refreshing) return refreshing;
+    refreshing = (async () => {
+      try {
+        pdfs = await loadPdfs();
+        loaded = true;
+      } catch {
+        empty.textContent = "No se pudo cargar la biblioteca. Reabre la pestaña para reintentar.";
+        addBtn.disabled = true;
+        return;
+      }
+      addBtn.disabled = false;
+      list.inert = false;
+      renderList();
+      const initialPdf = new URLSearchParams(location.search).get("pdf");
+      if (!reload && initialPdf && pdfs.includes(initialPdf)) view(initialPdf);
+      else showList();
+    })();
+    await refreshing;
+    refreshing = undefined;
   };
 
-  return { el, refresh };
+  return { el, refresh, currentPath: () => openedPath };
 }

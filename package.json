@@ -3,7 +3,11 @@
   "version": "0.1.0",
   "description": "CrocHat — widget de escritorio Pomodoro pixel-art para Windows",
   "type": "module",
+  "engines": { "node": ">=22.13.0" },
   "scripts": {
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "predev": "node tools/prepare-pdf-assets.mjs",
+    "prebuild": "node tools/prepare-pdf-assets.mjs",
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
@@ -14,7 +18,9 @@
     "@tauri-apps/plugin-dialog": "^2.7.1",
     "@tauri-apps/plugin-fs": "^2.5.1",
     "@tauri-apps/plugin-notification": "^2.2.2",
-    "@tauri-apps/plugin-store": "^2.2.0"
+    "@tauri-apps/plugin-store": "^2.2.0",
+    "jspdf": "^4.2.1",
+    "pdfjs-dist": "^6.3.289"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.5.0",

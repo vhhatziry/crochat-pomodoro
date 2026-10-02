@@ -3,6 +3,7 @@
  * drag region; the buttons stop propagation so clicking them never drags.
  */
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { installCloseGuard } from "./closeGuard";
 
 export function createTitlebar(): HTMLElement {
   const bar = document.createElement("div");
@@ -17,7 +18,7 @@ export function createTitlebar(): HTMLElement {
   buttons.className = "titlebar__buttons";
 
   const minBtn = makeButton("–", "Minimizar", "titlebar__btn");
-  const pinBtn = makeButton("▢", "Fijar encima", "titlebar__btn");
+  const pinBtn = makeButton("📌", "Fijar encima", "titlebar__btn");
   const closeBtn = makeButton("✕", "Cerrar", "titlebar__btn titlebar__btn--close");
 
   // Null when not running under Tauri (e.g. plain-browser dev) so the UI still
@@ -29,6 +30,7 @@ export function createTitlebar(): HTMLElement {
     appWindow = null;
   }
   let pinned = true;
+  void installCloseGuard();
 
   minBtn.addEventListener("click", (e) => {
     e.stopPropagation();

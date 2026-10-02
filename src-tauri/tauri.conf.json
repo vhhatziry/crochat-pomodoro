@@ -23,13 +23,13 @@
         "decorations": false,
         "transparent": true,
         "alwaysOnTop": true,
-        "skipTaskbar": true,
+        "skipTaskbar": false,
         "shadow": false,
         "center": true
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data: asset: http://asset.localhost; font-src 'self' data:; style-src 'self' 'unsafe-inline'; frame-src 'self' asset: http://asset.localhost blob:; object-src 'self' asset: http://asset.localhost blob:",
+      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self' ipc: http://ipc.localhost asset: http://asset.localhost; worker-src 'self' blob:; img-src 'self' data: asset: http://asset.localhost; font-src 'self' data:; style-src 'self' 'unsafe-inline'; frame-src 'self' asset: http://asset.localhost blob:; object-src 'none'",
       "assetProtocol": {
         "enable": true,
         "scope": ["**"]
