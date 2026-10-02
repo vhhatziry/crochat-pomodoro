@@ -1,8 +1,24 @@
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tauri::AppHandle;
+use std::collections::HashSet;
+use tauri::{AppHandle, Manager};
+mod pattern_export;
+use pattern_export::{export_pattern_pdf, pattern_design};
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_store::StoreExt;
+
+fn unique_paths(paths: Vec<String>) -> Vec<String> {
+    let mut seen = HashSet::new();
+    paths
+        .into_iter()
+        .filter(|path| {
+            let key = path.replace('\\', "/");
+            #[cfg(windows)]
+            let key = key.to_lowercase();
+            seen.insert(key)
+        })
+        .collect()
+}
 
 const STORE_FILE: &str = "crochat-store.json";
 const KEY_PATRONES: &str = "patrones";
@@ -41,6 +57,17 @@ pub struct PomodoroConfig {
 /// Persist the full list of patterns to the local store.
 #[tauri::command]
 fn save_patrones(app: AppHandle, patrones: Vec<Patron>) -> Result<(), String> {
+    let mut ids = HashSet::new();
+    for patron in &patrones {
+        if patron.id.trim().is_empty() || !ids.insert(&patron.id) {
+            return Err(
+                "Hay IDs de patrones vacíos o repetidos. No se modificaron tus datos.".into(),
+            );
+        }
+        if patron.counter < 0 {
+            return Err("El contador no puede ser negativo.".into());
+        }
+    }
     let store = app.store(STORE_FILE).map_err(|e| e.to_string())?;
     let value = serde_json::to_value(&patrones).map_err(|e| e.to_string())?;
     store.set(KEY_PATRONES, value);
@@ -104,7 +131,7 @@ fn load_config(app: AppHandle) -> Result<Option<PomodoroConfig>, String> {
 #[tauri::command]
 fn save_pdfs(app: AppHandle, paths: Vec<String>) -> Result<(), String> {
     let store = app.store(STORE_FILE).map_err(|e| e.to_string())?;
-    store.set(KEY_PDFS, json!(paths));
+    store.set(KEY_PDFS, json!(unique_paths(paths)));
     store.save().map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -123,7 +150,7 @@ fn load_pdfs(app: AppHandle) -> Result<Vec<String>, String> {
 #[tauri::command]
 fn save_images(app: AppHandle, paths: Vec<String>) -> Result<(), String> {
     let store = app.store(STORE_FILE).map_err(|e| e.to_string())?;
-    store.set(KEY_IMAGES, json!(paths));
+    store.set(KEY_IMAGES, json!(unique_paths(paths)));
     store.save().map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -153,6 +180,13 @@ fn notify(app: AppHandle, title: String, body: String) -> Result<(), String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _, _| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
@@ -167,6 +201,8 @@ pub fn run() {
             load_pdfs,
             save_images,
             load_images,
+            pattern_design,
+            export_pattern_pdf,
             notify
         ])
         .run(tauri::generate_context!())

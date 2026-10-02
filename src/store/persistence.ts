@@ -4,6 +4,7 @@
  * bridge directly.
  */
 import { invoke } from "@tauri-apps/api/core";
+import { createWriteQueue, repairPatternIds, uniqueLibraryPaths } from "./writeQueue";
 
 export interface Patron {
   id: string;
@@ -24,11 +25,18 @@ export interface ConfigDTO {
 }
 
 export async function loadPatrones(): Promise<Patron[]> {
-  return invoke<Patron[]>("load_patrones");
+  return repairPatternIds(await invoke<Patron[]>("load_patrones"));
+}
+
+const patternWrites = createWriteQueue<Patron[]>((patrones) => invoke("save_patrones", { patrones }));
+const pdfWrites = createWriteQueue<string[]>((paths) => invoke("save_pdfs", { paths }));
+const imageWrites = createWriteQueue<string[]>((paths) => invoke("save_images", { paths }));
+export async function flushLibraryWrites(): Promise<void> {
+  await Promise.all([patternWrites.flush(), pdfWrites.flush(), imageWrites.flush()]);
 }
 
 export async function savePatrones(patrones: Patron[]): Promise<void> {
-  await invoke("save_patrones", { patrones });
+  await patternWrites.save(patrones);
 }
 
 export async function loadTheme(): Promise<ThemeName> {
@@ -51,18 +59,18 @@ export async function saveConfig(config: ConfigDTO): Promise<void> {
 
 /** The user's PDF pattern library (absolute file paths). */
 export async function loadPdfs(): Promise<string[]> {
-  return invoke<string[]>("load_pdfs");
+  return uniqueLibraryPaths(await invoke<string[]>("load_pdfs"));
 }
 
 export async function savePdfs(paths: string[]): Promise<void> {
-  await invoke("save_pdfs", { paths });
+  await pdfWrites.save(uniqueLibraryPaths(paths));
 }
 
 /** The user's image gallery (absolute file paths). */
 export async function loadImages(): Promise<string[]> {
-  return invoke<string[]>("load_images");
+  return uniqueLibraryPaths(await invoke<string[]>("load_images"));
 }
 
 export async function saveImages(paths: string[]): Promise<void> {
-  await invoke("save_images", { paths });
+  await imageWrites.save(uniqueLibraryPaths(paths));
 }

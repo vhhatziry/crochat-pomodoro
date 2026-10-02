@@ -5,6 +5,7 @@
  */
 import { loadImages, saveImages } from "../store/persistence";
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { uniqueLibraryPaths } from "../store/writeQueue";
 
 export interface Gallery {
   el: HTMLElement;
@@ -50,6 +51,7 @@ export function createGallery(opts: GalleryOptions = {}): Gallery {
   const emptyText = document.createElement("p");
   emptyText.textContent = "Tu galería está vacía ✨";
   const emptyAdd = document.createElement("button");
+  addBtn.disabled = emptyAdd.disabled = true;
   emptyAdd.type = "button";
   emptyAdd.className = "gallery__empty-add";
   emptyAdd.textContent = "＋ Agregar imágenes";
@@ -63,7 +65,9 @@ export function createGallery(opts: GalleryOptions = {}): Gallery {
   let elapsed = 0;
   let ticker: ReturnType<typeof setInterval> | null = null;
 
-  const persist = () => saveImages(images).catch(() => {});
+  const persist = () => saveImages(images).catch(() => {
+    window.alert("No se guardaron los cambios de la galería. Intenta de nuevo antes de cerrar.");
+  });
 
   const advance = (dir: number) => {
     if (images.length < 2) return;
@@ -126,8 +130,9 @@ export function createGallery(opts: GalleryOptions = {}): Gallery {
           ? [selected]
           : [];
       if (!picked.length) return;
-      for (const p of picked) if (!images.includes(p)) images.push(p);
-      index = images.length - picked.length; // jump to first newly added
+      const oldLength = images.length;
+      images = uniqueLibraryPaths([...images, ...picked]);
+      index = Math.min(oldLength, images.length - 1);
       render();
       persist();
       setActive(active);
@@ -150,20 +155,28 @@ export function createGallery(opts: GalleryOptions = {}): Gallery {
   next.addEventListener("click", () => advance(1));
 
   let loaded = false;
+  let refreshing: Promise<void> | undefined;
   const refresh = async () => {
     if (loaded) {
       render();
       setActive(active);
       return;
     }
-    loaded = true;
-    try {
-      images = await loadImages();
-    } catch {
-      images = [];
-    }
-    render();
-    setActive(active);
+    if (refreshing) return refreshing;
+    refreshing = (async () => {
+      try {
+        images = await loadImages();
+        loaded = true;
+        addBtn.disabled = emptyAdd.disabled = false;
+      } catch {
+        emptyText.textContent = "No se pudo cargar tu galería. Reabre para reintentar.";
+        return;
+      }
+      render();
+      setActive(active);
+    })();
+    await refreshing;
+    refreshing = undefined;
   };
 
   render();

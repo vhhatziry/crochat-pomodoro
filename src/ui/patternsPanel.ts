@@ -6,7 +6,8 @@
  */
 import { createPatronesView } from "./patronesView";
 import { loadPdfs, savePdfs } from "../store/persistence";
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { createPdfReader } from "../pdf/reader";
+import { uniqueLibraryPaths } from "../store/writeQueue";
 
 export interface PatternsPanel {
   el: HTMLElement;
@@ -96,6 +97,7 @@ function createPdfView(): PdfView {
   addBtn.type = "button";
   addBtn.className = "pdfview__open";
   addBtn.textContent = "＋ Añadir PDFs";
+  addBtn.disabled = true;
   bar.append(backBtn, title, addBtn);
 
   // --- list -----------------------------------------------------------------
@@ -114,9 +116,12 @@ function createPdfView(): PdfView {
   el.append(bar, list, empty, frameWrap);
 
   let pdfs: string[] = [];
-  let iframe: HTMLIFrameElement | null = null;
+  const reader = createPdfReader();
+  frameWrap.append(reader.el);
 
-  const persist = () => savePdfs(pdfs).catch(() => {});
+  const persist = () => savePdfs(pdfs).catch(() => {
+    window.alert("No se guardaron los cambios de la biblioteca PDF. Intenta de nuevo antes de cerrar.");
+  });
 
   const renderList = () => {
     list.innerHTML = "";
@@ -152,10 +157,7 @@ function createPdfView(): PdfView {
   };
 
   const showList = () => {
-    if (iframe) {
-      iframe.remove();
-      iframe = null;
-    }
+    reader.clear();
     frameWrap.hidden = true;
     list.hidden = pdfs.length === 0;
     empty.hidden = pdfs.length > 0;
@@ -165,23 +167,13 @@ function createPdfView(): PdfView {
   };
 
   const view = (path: string) => {
-    if (iframe) iframe.remove();
-    iframe = document.createElement("iframe");
-    iframe.className = "pdfview__iframe";
-    iframe.title = "Patrón PDF";
-    try {
-      iframe.src = convertFileSrc(path);
-    } catch {
-      iframe.src = path;
-    }
-    frameWrap.innerHTML = "";
-    frameWrap.appendChild(iframe);
     frameWrap.hidden = false;
     list.hidden = true;
     empty.hidden = true;
     backBtn.hidden = false;
     addBtn.hidden = true;
     title.textContent = baseName(path);
+    void reader.open(path);
   };
 
   backBtn.addEventListener("click", showList);
@@ -200,7 +192,7 @@ function createPdfView(): PdfView {
           ? [selected]
           : [];
       if (!picked.length) return;
-      for (const p of picked) if (!pdfs.includes(p)) pdfs.push(p);
+      pdfs = uniqueLibraryPaths([...pdfs, ...picked]);
       renderList();
       persist();
     } catch (err) {
@@ -209,16 +201,25 @@ function createPdfView(): PdfView {
   });
 
   let loaded = false;
+  let refreshing: Promise<void> | undefined;
   const refresh = async () => {
     if (loaded) return;
-    loaded = true;
-    try {
-      pdfs = await loadPdfs();
-    } catch {
-      pdfs = [];
-    }
-    renderList();
-    showList();
+    if (refreshing) return refreshing;
+    refreshing = (async () => {
+      try {
+        pdfs = await loadPdfs();
+        loaded = true;
+      } catch {
+        empty.textContent = "No se pudo cargar la biblioteca. Reabre la pestaña para reintentar.";
+        addBtn.disabled = true;
+        return;
+      }
+      addBtn.disabled = false;
+      renderList();
+      showList();
+    })();
+    await refreshing;
+    refreshing = undefined;
   };
 
   return { el, refresh };

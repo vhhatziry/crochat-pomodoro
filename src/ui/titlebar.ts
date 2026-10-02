@@ -3,6 +3,7 @@
  * drag region; the buttons stop propagation so clicking them never drags.
  */
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { flushLibraryWrites } from "../store/persistence";
 
 export function createTitlebar(): HTMLElement {
   const bar = document.createElement("div");
@@ -29,6 +30,14 @@ export function createTitlebar(): HTMLElement {
     appWindow = null;
   }
   let pinned = true;
+  appWindow?.onCloseRequested(async (event) => {
+    try {
+      await flushLibraryWrites();
+    } catch {
+      event.preventDefault();
+      window.alert("No se guardaron los últimos cambios. La ventana seguirá abierta; vuelve a intentar guardar antes de cerrar.");
+    }
+  });
 
   minBtn.addEventListener("click", (e) => {
     e.stopPropagation();

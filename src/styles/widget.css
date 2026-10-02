@@ -941,3 +941,14 @@
   color: var(--accent-2);
   font-size: 7px;
 }
+
+.pdf-reader { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.pdf-reader__tools { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 5px; font: 11px system-ui; }
+.pdf-reader__tools button, .pattern-actions button { border: 1px solid var(--accent); border-radius: 5px; padding: 5px 8px; background: var(--bg); color: inherit; cursor: pointer; }
+.pdf-reader__scroll { flex: 1; min-height: 0; overflow: auto; background: #dedbe4; padding: 8px; }
+.pdf-reader canvas { display: block; background: white; margin: auto; }
+.pdf-reader p, .pattern-status { font: 11px system-ui; margin: 4px 8px; }
+.pattern-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font: 12px system-ui; margin-top: 10px; }
+.pattern-actions label { display: flex; gap: 4px; align-items: center; }
+.pattern-actions input { width: auto; }
+button:disabled { opacity: .5; cursor: wait; }

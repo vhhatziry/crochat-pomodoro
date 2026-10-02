@@ -8,6 +8,7 @@ import {
   savePatrones,
   type Patron,
 } from "../store/persistence";
+import { exportPattern } from "../pdf/exportPattern";
 
 export interface PatronesView {
   el: HTMLElement;
@@ -40,21 +41,28 @@ export function createPatronesView(): PatronesView {
   empty.textContent = "Sin patrones aún. Toca + para crear uno.";
 
   view.append(header, list, empty);
+  const status = document.createElement("p");
+  status.className = "pattern-status";
+  status.setAttribute("role", "status");
+  const retry = document.createElement("button");
+  retry.textContent = "Reintentar guardado";
+  retry.hidden = true;
+  view.append(status, retry);
 
   let patrones: Patron[] = [];
-  let saveTimer: ReturnType<typeof setTimeout> | null = null;
-
   const scheduleSave = () => {
-    if (saveTimer) clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      savePatrones(patrones).catch((err) =>
-        console.error("[CrocHat] could not save patrones:", err),
-      );
-    }, 400);
+    status.textContent = "Guardando…";
+    savePatrones(patrones).then(() => {
+      status.textContent = "Guardado";
+      retry.hidden = true;
+    }).catch(() => {
+      status.textContent = "No se pudo guardar. Tus cambios siguen aquí.";
+      retry.hidden = false;
+    });
   };
+  retry.addEventListener("click", scheduleSave);
 
-  const newId = (): string =>
-    `p_${performance.now().toString(36)}_${(patrones.length + 1).toString(36)}`;
+  const newId = (): string => crypto.randomUUID();
 
   const render = () => {
     list.innerHTML = "";
@@ -127,7 +135,32 @@ export function createPatronesView(): PatronesView {
     });
 
     counterWrap.append(minus, value, plus, label);
-    item.append(top, bodyInput, counterWrap);
+    const actions = document.createElement("div");
+    actions.className = "pattern-actions";
+    const aiLabel = document.createElement("label");
+    const ai = document.createElement("input");
+    ai.type = "checkbox";
+    aiLabel.append(ai, " Diseño con Gemini");
+    aiLabel.title = "Envía el título y las notas a Gemini para elegir subtítulo y paleta. Las instrucciones se conservan.";
+    const finish = document.createElement("button");
+    finish.textContent = "Finalizar → PDF";
+    finish.addEventListener("click", async () => {
+      finish.disabled = true;
+      del.disabled = true;
+      status.textContent = ai.checked ? "Diseñando con Gemini…" : "Preparando PDF…";
+      try {
+        await savePatrones(patrones);
+        const path = await exportPattern(structuredClone(p), ai.checked);
+        status.textContent = path ? "PDF guardado. Añádelo desde la pestaña PDF para leerlo." : "Exportación cancelada.";
+      } catch (error) {
+        status.textContent = String(error);
+      } finally {
+        finish.disabled = false;
+        del.disabled = false;
+      }
+    });
+    actions.append(aiLabel, finish);
+    item.append(top, bodyInput, counterWrap, actions);
     return item;
   };
 
@@ -140,14 +173,25 @@ export function createPatronesView(): PatronesView {
     firstTitle?.focus();
   });
 
+  let loading: Promise<void> | null = null;
+  let loaded = false;
+  addBtn.disabled = true;
   const refresh = async () => {
-    try {
-      patrones = await loadPatrones();
-    } catch (err) {
-      console.error("[CrocHat] could not load patrones:", err);
-      patrones = [];
-    }
-    render();
+    if (loaded) return;
+    if (loading) return loading;
+    loading = (async () => {
+      try {
+        patrones = await loadPatrones();
+        loaded = true;
+        addBtn.disabled = false;
+        render();
+      } catch (err) {
+        console.error("[CrocHat] could not load patrones:", err);
+        status.textContent = "No se pudieron cargar tus patrones. Vuelve a abrir esta pestaña para reintentar.";
+      }
+    })();
+    await loading;
+    loading = null;
   };
 
   return { el: view, refresh };
