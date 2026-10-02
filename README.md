@@ -42,6 +42,23 @@ Cuando necesitas más espacio, abre los patrones en su propia ventana y acomóda
 El temporizador, la biblioteca, las notas y la exportación funcionan **sin conexión**.
 El diseño opcional con Gemini requiere configuración e Internet.
 
+## Así se ve el espacio de patrones
+
+El editor en **Verde (modo claro)** y **Morado**, con campos claros y texto oscuro
+para leer las instrucciones con comodidad. Las capturas usan un patrón de ejemplo.
+
+<p align="center">
+  <img src="docs/pattern-editor-green.png" alt="Editor de patrones en modo verde claro, con instrucciones y contador de vueltas" width="49%">
+  <img src="docs/pattern-editor-purple.png" alt="Editor de patrones en tema morado, con campos de alto contraste" width="49%">
+</p>
+
+**Un PDF a mano mientras tejes.** La ventana independiente permite ampliar el visor;
+los controles de página y zoom acompañan la lectura. Este documento se exportó desde CrocHat.
+
+<p align="center">
+  <img src="docs/pdf-viewer-green.png" alt="Visor PDF en modo claro mostrando un patrón exportado, con materiales y abreviaturas" width="85%">
+</p>
+
 ## Pequeños detalles que acompañan
 
 - ⏱️ **Temporizador Pomodoro** con máquina de estados (`Idle → Working → ShortBreak → LongBreak`).

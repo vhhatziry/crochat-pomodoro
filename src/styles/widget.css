@@ -971,6 +971,20 @@ button:disabled { opacity: .5; cursor: wait; }
 .pattern-details summary { cursor: pointer; }
 .pdf-reader__page { width: 48px; font: inherit; padding: 4px; border: 1px solid var(--border); border-radius: 4px; color: #24202e; background: white; }
 .pdf-reader { color: #282031; }
+.view--patrones { --text: #282031; color: var(--text); }
+.view--patrones .patron { background: #faf8fc; color: #282031; gap: 8px; }
+.view--patrones .patron__title,
+.view--patrones .pattern-field input,
+.view--patrones .pattern-field textarea { background: #fff; color: #282031; }
+.view--patrones input::placeholder,
+.view--patrones textarea::placeholder { color: #62596c; opacity: 1; }
+.view--patrones .patrones__title { color: #282031; text-shadow: none; }
+.view--patrones .patrones__empty,
+.view--patrones .patron__count-label { color: #282031; font: 13px/1.5 system-ui; }
+.view--patrones .patron__title { font: 600 15px/1.5 system-ui; padding: 7px; }
+.view--patrones .patron__count-value { font: 600 16px/1.5 system-ui; }
+.view--patrones .patron__count-btn { width: 26px; height: 26px; font: 18px/1 system-ui; }
+.view--patrones .pattern-actions button { background: #f0e9f7; color: #282031; border-color: #705581; }
 .patterns-window { --text: #282031; color: var(--text); }
 .patterns-window .patron__title { font: 600 19px/1.5 system-ui; padding: 9px; }
 .patterns-window .patron__del { width: 28px; height: 28px; font-size: 12px; }
