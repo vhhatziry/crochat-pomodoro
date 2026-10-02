@@ -19,6 +19,7 @@ import { createPatternsPanel } from "./ui/patternsPanel";
 import { initTheme, toggleTheme } from "./ui/theme";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { LogicalSize } from "@tauri-apps/api/dpi";
+import { installCloseGuard } from "./ui/closeGuard";
 
 /** Compact (timer only) and split (timer + pattern panel) window sizes. */
 const SIZE_COMPACT = { w: 300, h: 372 };
@@ -39,6 +40,14 @@ async function resizeWindow(w: number, h: number): Promise<void> {
 
 async function boot(): Promise<void> {
   await initTheme();
+  if (new URLSearchParams(location.search).get("window") === "patterns") {
+    await installCloseGuard();
+    document.body.classList.add("patterns-window");
+    const panel = createPatternsPanel({ standalone: true });
+    document.getElementById("app")!.append(panel.el);
+    panel.refresh();
+    return;
+  }
   ensureNotificationPermission();
   primeAudio();
 

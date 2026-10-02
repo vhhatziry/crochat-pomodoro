@@ -79,6 +79,22 @@ añádelos a la biblioteca con «Añadir PDFs».
 
 ## Integridad de datos y pruebas
 
+### Ventana de patrones
+
+En el panel, «↗ Ventana» abre los PDF y el editor en una ventana independiente de
+900 × 720 px. Tiene los controles normales de Windows para maximizar, minimizar y
+redimensionar desde los bordes. El temporizador conserva su tamaño de widget.
+«↗ Ver ventana» enfoca la misma ventana, sin abrir más copias. Al cerrarla se espera
+al guardado y se recarga el panel del temporizador. Solo la ventana independiente
+puede editar la biblioteca mientras está abierta, para evitar sobrescribir cambios.
+
+Los patrones propios admiten autoría, tamaño final, materiales, abreviaturas,
+instrucciones por pieza y armado/acabados. Los campos nuevos son opcionales y se
+incluyen en el PDF; las notas antiguas siguen funcionando. El visor también muestra
+PDFs hechos de imágenes, aunque esos documentos no tengan texto seleccionable.
+
+### Guardado
+
 Los datos están en `crochat-store.json` dentro del directorio de datos de Tauri; este
 repositorio no utiliza una base SQL. Los patrones nuevos usan UUID. Al cargar IDs antiguos
 repetidos se asigna una identidad distinta a cada nota, sin borrar ni combinar contenidos.
@@ -141,7 +157,7 @@ tools/gen-sprites.mjs     generador de sprites (encoder PNG con zlib nativo)
 
 ## Controles
 
-- **Barra de título**: arrástrala para mover el widget. `_` minimiza · `▢` fija/desfija "siempre encima" · `✕` cierra.
+- **Barra de título**: arrástrala para mover el widget. `_` minimiza · `📌` fija/desfija "siempre encima" · `✕` cierra.
 - **Fila de controles**: la píldora cambia de **tema**, el círculo central es **play/pausa**,
   el botón rosa alterna entre **Temporizador** y **Patrones**.
 

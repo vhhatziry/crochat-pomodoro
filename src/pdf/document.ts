@@ -1,6 +1,10 @@
 import { jsPDF } from "jspdf";
 
-export interface PatternDocument { title: string; body: string; counter: number }
+export interface PatternDocument {
+  title: string; body: string; counter: number;
+  materials?: string; abbreviations?: string; assembly?: string;
+  size?: string; author?: string;
+}
 export interface PatternDesign { subtitle: string; accent: "lavender" | "mint" | "rose" }
 
 export function buildPatternPdf(pattern: PatternDocument, font: string, design?: PatternDesign): Uint8Array {
@@ -38,13 +42,26 @@ export function buildPatternPdf(pattern: PatternDocument, font: string, design?:
   };
   newPage();
   text(pattern.title.trim(), 22, 10);
+  if (pattern.author?.trim()) text(`Diseño: ${pattern.author.trim()}`, 10, 5);
   if (design?.subtitle) text(design.subtitle, 11, 6);
   text(`Registro de tejido: ${pattern.counter} vueltas`, 9, 5);
+  if (pattern.size?.trim()) text(`Medidas: ${pattern.size.trim()}`, 10, 5);
   y += 3;
+  const section = (heading: string, value?: string) => {
+    if (!value?.trim()) return;
+    if (y > 247) newPage();
+    text(heading, 15, 8);
+    for (const paragraph of value.replace(/\r\n/g, "\n").split("\n")) text(paragraph || " ", 11, 6);
+  };
+  section("Materiales", pattern.materials);
+  section("Abreviaturas", pattern.abbreviations);
+  if (y > 247) newPage();
+  text("Instrucciones por pieza", 15, 8);
   // Source text stays intact, including explicit paragraphs and stitch counts.
   for (const paragraph of pattern.body.replace(/\r\n/g, "\n").split("\n")) {
     text(paragraph || " ", 11, 6);
   }
+  section("Armado y acabados", pattern.assembly);
   const count = doc.getNumberOfPages();
   for (let i = 1; i <= count; i++) {
     doc.setPage(i);

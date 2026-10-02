@@ -11,6 +11,11 @@ export interface Patron {
   title: string;
   body: string;
   counter: number;
+  materials?: string;
+  abbreviations?: string;
+  assembly?: string;
+  size?: string;
+  author?: string;
 }
 
 export type ThemeName = "green" | "purple";

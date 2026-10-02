@@ -952,3 +952,28 @@
 .pattern-actions label { display: flex; gap: 4px; align-items: center; }
 .pattern-actions input { width: auto; }
 button:disabled { opacity: .5; cursor: wait; }
+
+.panel__detached { padding: 24px; font: 14px/1.7 system-ui; color: var(--text); }
+.patterns-window { background: var(--bg-soft); }
+.patterns-window #app { display: flex; }
+.patterns-window .panel { display: flex; width: 100%; }
+.patterns-window .panel__tabs { padding: 12px 16px 0; }
+.patterns-window .panel__tab { flex: 0 1 180px; font-size: 11px; padding: 12px; }
+.patterns-window .pdf-reader__tools { justify-content: center; gap: 16px; font-size: 14px; }
+.patterns-window .pdf-reader__scroll { padding: 16px; }
+.patterns-window .patrones__list { padding: 12px; }
+.patterns-window .patron { width: 100%; max-width: 960px; margin: 0 auto; padding: 20px; }
+.pattern-field { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; font: 13px/1.5 system-ui; }
+.pattern-field textarea, .pattern-field input { padding: 9px; width: 100%; font: 14px/1.6 system-ui; border: 1px solid var(--border); border-radius: 5px; background: var(--bg); color: var(--text); }
+.pattern-field textarea { min-height: 90px; resize: vertical; }
+.pattern-field .patron__body { min-height: 160px; }
+.pattern-details { margin-top: 10px; font: 13px/1.6 system-ui; }
+.pattern-details summary { cursor: pointer; }
+.pdf-reader__page { width: 48px; font: inherit; padding: 4px; border: 1px solid var(--border); border-radius: 4px; color: #24202e; background: white; }
+.pdf-reader { color: #282031; }
+.patterns-window { --text: #282031; color: var(--text); }
+.patterns-window .patron__title { font: 600 19px/1.5 system-ui; padding: 9px; }
+.patterns-window .patron__del { width: 28px; height: 28px; font-size: 12px; }
+.patterns-window .patrones__add { width: 32px; height: 32px; font-size: 20px; }
+.patterns-window .pdfrow__open { font: 14px/1.5 system-ui; padding: 12px; }
+.patterns-window .pdfview__name { font: 12px/1.5 system-ui; }

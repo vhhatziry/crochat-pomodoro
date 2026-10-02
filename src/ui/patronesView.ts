@@ -13,7 +13,7 @@ import { exportPattern } from "../pdf/exportPattern";
 export interface PatronesView {
   el: HTMLElement;
   /** Load persisted patterns and render them. */
-  refresh: () => Promise<void>;
+  refresh: (reload?: boolean) => Promise<void>;
 }
 
 export function createPatronesView(): PatronesView {
@@ -105,7 +105,9 @@ export function createPatronesView(): PatronesView {
     bodyInput.className = "patron__body";
     bodyInput.value = p.body;
     bodyInput.placeholder = "Notas del patrón…";
-    bodyInput.rows = 2;
+    bodyInput.placeholder = "CUERPO\nV1: 6 pb en AM (6)\nV2: 6 aum (12)\n\nOREJAS × 2\nEscribe tus instrucciones por pieza…";
+    bodyInput.rows = 5;
+    bodyInput.setAttribute("aria-label", "Instrucciones por pieza y vuelta");
     bodyInput.addEventListener("input", () => {
       p.body = bodyInput.value;
       scheduleSave();
@@ -160,7 +162,33 @@ export function createPatronesView(): PatronesView {
       }
     });
     actions.append(aiLabel, finish);
-    item.append(top, bodyInput, counterWrap, actions);
+    const details = document.createElement("details");
+    details.className = "pattern-details";
+    const summary = document.createElement("summary");
+    summary.textContent = "Materiales, abreviaturas y datos del patrón";
+    details.append(summary);
+    const field = (key: "materials" | "abbreviations" | "assembly" | "size" | "author", label: string, hint: string, multiline = true) => {
+      const wrap = document.createElement("label");
+      wrap.className = "pattern-field";
+      wrap.append(document.createTextNode(label));
+      const input = document.createElement(multiline ? "textarea" : "input") as HTMLTextAreaElement | HTMLInputElement;
+      input.value = p[key] ?? "";
+      input.placeholder = hint;
+      input.addEventListener("input", () => { p[key] = input.value; scheduleSave(); });
+      wrap.append(input);
+      return wrap;
+    };
+    details.append(
+      field("author", "Autoría", "Tu nombre o el de tu estudio", false),
+      field("size", "Tamaño final", "Alto, ancho y muestra de tensión", false),
+      field("materials", "Materiales y herramientas", "Marca, tono, cantidad, material, gancho, ojos y relleno…"),
+      field("abbreviations", "Abreviaturas", "pb: punto bajo\naum: aumento\ndism: disminución"),
+    );
+    const instructionsLabel = document.createElement("label");
+    instructionsLabel.className = "pattern-field";
+    instructionsLabel.append("Instrucciones por pieza", bodyInput);
+    item.append(top, details, instructionsLabel,
+      field("assembly", "Armado y acabados", "Ubicación de ojos, costuras, relleno y detalles finales…"), counterWrap, actions);
     return item;
   };
 
@@ -176,7 +204,8 @@ export function createPatronesView(): PatronesView {
   let loading: Promise<void> | null = null;
   let loaded = false;
   addBtn.disabled = true;
-  const refresh = async () => {
+  const refresh = async (reload = false) => {
+    if (reload) { loaded = false; addBtn.disabled = true; list.inert = true; }
     if (loaded) return;
     if (loading) return loading;
     loading = (async () => {
@@ -184,6 +213,7 @@ export function createPatronesView(): PatronesView {
         patrones = await loadPatrones();
         loaded = true;
         addBtn.disabled = false;
+        list.inert = false;
         render();
       } catch (err) {
         console.error("[CrocHat] could not load patrones:", err);
